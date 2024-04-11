@@ -19,7 +19,8 @@ typedef enum states
 	STATE_OPERATION,
 	STATE_CLOSE_BRACE,
 	STATE_SEMICOLON,
-	STATE_INVALID
+	STATE_INVALID,
+	STATE_INIT
 } states_t;
 
 typedef struct parser
@@ -27,6 +28,6 @@ typedef struct parser
 	states_t state;
 } parser_t;
 
-void parse(parser_t *parser, token_t token, int *is_error);
+token_type_e parse(parser_t *parser, token_t token, int *is_error);
 
 #endif // PARSER_H_

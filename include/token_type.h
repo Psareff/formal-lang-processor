@@ -7,23 +7,26 @@ static const char* keywords_list[KEYWORDS_COUNT] = {
 	"Operation", "short", "int", "long", "float", "double", "boolean", "char", "string"
 };
 
-static enum token_type_e
-{ 
-	KEYWORD, 
-	IDENT, 
-	EQUALS, 
-	NUMBER,
-	WHITESPACE, 
-	OPERATION, 
-	ASSIGNMENT, 
-	OPEN_PAREN, 
+typedef enum token_type
+{
+	KEYWORD,
+	IDENT,
+	EQUALS,
+	DECIMAL_NUMBER,
+	NEGATIVE_DECIMAL_NUMBER,
+	FLOATING_NUMBER,
+	NEGATIVE_FLOATING_NUMBER,
+	WHITESPACE,
+	OPERATION,
+	ASSIGNMENT,
+	OPEN_PAREN,
 	CLOSE_PAREN,
-	OPEN_BRACE, 
-	CLOSE_BRACE, 
-	COMMA, 
+	OPEN_BRACE,
+	CLOSE_BRACE,
+	COMMA,
 	SEMICOLON,
 	NEWLINE,
 	INVALID
-};
+} token_type_e;
 
 #endif //TOKEN_TYPE_H_

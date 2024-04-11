@@ -65,6 +65,6 @@ char current_modifier_condition = 0x0;
 { \
 	if (action) current_modifier_condition |= modifier; \
 	else current_modifier_condition &= !modifier; \
-} 
+}
 
 #endif // CODE_EDITOR_H_

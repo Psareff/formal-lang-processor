@@ -6,7 +6,7 @@ code_editor_t editor;
         gtk_builder_get_object(editor.builder, obj)
 
 #define GTK_BUTTON_CB_CONN(obj, cb) \
-        g_signal_connect(GET_GTK_OBJ(obj), "clicked", G_CALLBACK(cb), NULL) 
+        g_signal_connect(GET_GTK_OBJ(obj), "clicked", G_CALLBACK(cb), NULL)
 
 static void on_close_info_bar(GtkWidget *widget, GdkEventKey *event)
 {
@@ -23,7 +23,7 @@ static void on_quick_fix(GtkWidget *widget, GdkEventKey *event)
 {
 	g_print("Invoked %s\n", __func__);
 	parser_t parser;
-	parser.state = STATE_INVALID;
+	parser.state = STATE_INIT;
 	editor.tokens = editor.tokens_bak;
 	int error = 0;
 	char *text = gtk_text_buffer_get_text( editor.editor_view.buffer, &editor.editor_view.start, &editor.editor_view.end, TRUE );
@@ -50,8 +50,6 @@ states_t last_successfull_state;
 	new_text = new_text_bak;
 	if (new_text != "")
 		gtk_text_buffer_set_text(editor.editor_view.buffer, new_text, strlen(new_text));
-
-	
 }
 
 int autocomplete();
@@ -89,18 +87,16 @@ static gboolean code_key_pressed(GtkWidget *widget, GdkEventKey *event)
 				int min = autocomplete();
 				token_t *tok;
 				editor.tokens = editor.tokens_bak;
-				
 				while (editor.tokens != NULL)
 				{
-					tok = (token_t *)editor.tokens->data; 
+					tok = (token_t *)editor.tokens->data;
 					editor.tokens = editor.tokens->next;
 				}
 				strcpy(text + tok->start, keywords_list[min]);
 				gtk_text_buffer_set_text(editor.editor_view.buffer, text, strlen(text));
 
 			}
-			 
-			return TRUE;
+	return TRUE;
 	}
 	return FALSE;
 }
@@ -114,7 +110,7 @@ char *to_lower(char *word)
 {
   char *lower = malloc(strlen(word) + 1);
   strcpy(lower, word);
-  
+
   for (int i = 0; i < strlen(lower); i++)
     lower[i] = lower[i] >=  'A' && lower[i] <= 'Z' ? lower[i] + 32 : lower[i];
 
@@ -156,13 +152,21 @@ int autocomplete()
 
 }
 
+typedef struct error
+{
+	int start, end;
+	token_type_e awaited, actual;
+	char *data;
+} error_t;
+
+void append_text(void);
 static void on_editor_view_text_changed(GtkWidget *widget, GdkEventKey *event)
 {
-	g_print("Invoked %s\n", __func__);
+	//g_print("Invoked %s\n", __func__);
 
 	gtk_text_buffer_set_text(editor.debug_view.buffer, "", 0);
 	gtk_text_buffer_get_bounds(editor.editor_view.buffer,
-	                           &editor.editor_view.start, 
+	                           &editor.editor_view.start,
 	                           &editor.editor_view.end);
 	char *text = gtk_text_buffer_get_text( editor.editor_view.buffer, &editor.editor_view.start, &editor.editor_view.end, TRUE );
 	if (text[0] == '\0')
@@ -173,37 +177,88 @@ static void on_editor_view_text_changed(GtkWidget *widget, GdkEventKey *event)
 
 	int ret = tokenize(text, &editor.tokens);
 	editor.tokens_bak = editor.tokens;
-
-
 	if (ret)
 	{
 		char *tokens_str = token_collection_to_str(&editor.tokens);
+		//g_print(tokens_str);
 		free(tokens_str);
 	}
 
 	parser_t parser;
-	parser.state = STATE_INVALID;
+	parser.state = STATE_INIT;
 	editor.tokens = editor.tokens_bak;
 	int error = 0;
 	int errors_count = 0;
+
+	token_type_e awaited;
+/*
 	while (editor.tokens != NULL)
 	{
-		parse(&parser, *((token_t *)editor.tokens->data), &error);
+		awaited = parse(&parser, *((token_t *)editor.tokens->data), &error);
+		if ((((token_t *)editor.tokens->data)->type == WHITESPACE))
+			goto next_token;
 		if (error)
 		{
 			errors_count++;
 			gtk_widget_show(GTK_WIDGET(editor.info_bar.bar));
-			int len = snprintf(NULL, 0, "Error in syntax analysis:\n%s\n---\nTotal err count=%d", token_to_str(editor.tokens->data), errors_count) + 1;
+			int len = snprintf(NULL, 0, "Error in syntax analysis: awaited [%s]\n%s\n---\nTotal err count=%d", token_type_to_str(awaited), token_to_str(editor.tokens->data), errors_count) + 1;
 			char *token_err = malloc(len);
-			snprintf(token_err, len, "Error in syntax analysis:\n%s\n---\nTotal err count=%d", token_to_str(editor.tokens->data), errors_count);
+			snprintf(token_err, len, "Error in syntax analysis: awaited [%s]\n%s\n---\nTotal err count=%d", token_type_to_str(awaited), token_to_str(editor.tokens->data), errors_count);
 			gtk_text_buffer_set_text(editor.debug_view.buffer, token_err, strlen(token_err));
 			gtk_label_set_text(GTK_LABEL(editor.info_bar.info_bar_label), "Parsing error occured!");
 		}
-		else gtk_widget_hide(GTK_WIDGET(editor.info_bar.bar));
+		else
+		{
+			gtk_widget_hide(GTK_WIDGET(editor.info_bar.bar));
+			gtk_text_buffer_set_text(editor.debug_view.buffer, "", 0);
+		}
+next_token:
 		editor.tokens = editor.tokens->next;
 	}
+*/
 
 
+	//text = token_collection_to_str(&editor.tokens);
+	//
+
+	editor.tokens = editor.tokens_bak;
+
+	error_t errors[100];
+	int err_count = 0;
+	states_t last_successfull_state = STATE_INIT;
+	while (editor.tokens != NULL)
+	{
+		token_type_e aw = parse(&parser, *((token_t *)editor.tokens->data), &error);
+		if (!error)
+			last_successfull_state = parser.state;
+		if (aw != ((token_t *)editor.tokens->data)->type && ((token_t *)editor.tokens->data)->type != WHITESPACE)
+		{
+			errors[err_count] =
+			(error_t){
+				.start = ((token_t *)editor.tokens->data)->start,
+				.end = ((token_t *)editor.tokens->data)->end,
+				.awaited = aw,
+				.actual = ((token_t *)editor.tokens->data)->type,
+				.data = ((token_t *)editor.tokens->data)->value
+			};
+			err_count++;
+			parser.state = last_successfull_state;
+		}
+		char err_desc[10000];
+		int err_len = 0;
+		printf ("\033c");
+		for (int i = 0; i < err_count; i++)
+		{
+			err_len = snprintf(NULL, 0, "awaited %s, actual='%s'", token_type_to_str(errors[i].awaited), errors[i].data);
+			snprintf(err_desc + strlen(err_desc), err_len, "awaited %s, actual='%s'", token_type_to_str(errors[i].awaited), errors[i].data);
+			err_desc[err_len + 2] = '\n';
+		}
+
+			//g_print("awaited %s, actual='%s'\n", token_type_to_str(errors[i].awaited), errors[i].data);
+		g_print("%s", err_desc);
+		editor.tokens = editor.tokens->next;
+	}
+	gtk_text_buffer_set_text(editor.debug_view.buffer, error == 1 ? "q\0" : "0\0", 1);
 
 }
 

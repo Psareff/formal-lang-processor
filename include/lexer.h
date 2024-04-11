@@ -13,8 +13,14 @@
 			return "IDENT"; \
 		case EQUALS: \
 			return "EQUALS"; \
-		case NUMBER: \
-			return "NUMBER"; \
+		case DECIMAL_NUMBER: \
+			return "DECIMAL_NUMBER"; \
+		case FLOATING_NUMBER: \
+			return "FLOATING_NUMBER"; \
+		case NEGATIVE_DECIMAL_NUMBER: \
+			return "NEGATIVE_DECIMAL_NUMBER"; \
+		case NEGATIVE_FLOATING_NUMBER: \
+			return "NEGATIVE_FLOATING_NUMBER"; \
 		case WHITESPACE: \
 			return "WHITESPACE"; \
 		case OPERATION: \
@@ -45,14 +51,15 @@ typedef struct token
 	char *value;
 	unsigned start,
 	         end;
-	enum token_type_e type;
+	token_type_e type;
 
 } token_t;
 
 int tokenize(const char *expr, list_t **tokens);
-static token_t *create_token(const char *expr, int start, int end, enum token_type_e type);
+static token_t *create_token(const char *expr, int start, int end, token_type_e type);
 char *token_to_str(token_t *token);
 char *token_collection_to_str(list_t **tokens);
+char *token_type_to_str(token_type_e type);
 void dispose_token(token_t *token);
 
 #endif // LEXER_H_

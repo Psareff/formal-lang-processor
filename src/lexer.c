@@ -14,8 +14,8 @@
 				break; \
 			} \
 	}
-	
-token_t *create_token(const char *expr, int start, int end, enum token_type_e type)
+
+token_t *create_token(const char *expr, int start, int end, token_type_e type)
 {
 	token_t *tok = malloc(sizeof(token_t));
 	tok->start = start;
@@ -26,14 +26,14 @@ token_t *create_token(const char *expr, int start, int end, enum token_type_e ty
 	return tok;
 }
 
-char *token_type_to_str(enum token_type_e type)
+char *token_type_to_str(token_type_e type)
 {
 	TOKEN_TYPE_TO_STR(type);
 }
 
 char *token_to_str(token_t *token)
 {
-#define TOKEN_PRINT_FORMAT "%20s | [%4d - %4d] | %20s" 
+#define TOKEN_PRINT_FORMAT "%20s | [%4d - %4d] | %20s"
 	int count = snprintf(NULL, 0, TOKEN_PRINT_FORMAT, token->value,
 			token->start,
 			token->end,
@@ -62,12 +62,12 @@ int tokenize (const char *expr, list_t **tokens)
 
 	char *beginning = buffer;
 
-	int start, 
+	int start,
 	    end = 0;
 	int count = 0;
 
-	enum token_type_e type = INVALID;
-
+	token_type_e type = INVALID;
+	int negate_number = 0;
 	for (; *buffer != '\0'; buffer++)
 	{
 		start = end;
@@ -75,7 +75,7 @@ int tokenize (const char *expr, list_t **tokens)
 		{
 			case 'A' ... 'Z':
 			case 'a' ... 'z':
-				while (buffer++ && 
+				while (buffer++ &&
 				      (*buffer >= 'A' && *buffer <= 'Z') ||
 				      (*buffer >= 'a' && *buffer <= 'z') ||
 					  (*buffer >= '0' && *buffer <= '9'))
@@ -87,13 +87,18 @@ int tokenize (const char *expr, list_t **tokens)
 				break;
 			case '0' ... '9':
 number_recognition:
+				type = DECIMAL_NUMBER;
 				while (buffer++ &&
-				      (*buffer >= '0' && *buffer <= '9') || *buffer == '.')
+				      (*buffer >= '0' && *buffer <= '9'|| *buffer == '.' ))
 				{
+					if (*buffer == '.')
+						type = FLOATING_NUMBER;
 					end++;
 				}
+
+				type += negate_number;
+				negate_number = 0;
 				buffer--;
-				type = NUMBER;
 				break;
 			case ' ':
 				type = WHITESPACE;
@@ -125,6 +130,7 @@ number_recognition:
 						end++;
 						break;
 					case '0' ... '9':
+						negate_number = 1;
 						end++;
 						goto number_recognition;
 					default:
