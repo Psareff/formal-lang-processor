@@ -159,7 +159,6 @@ typedef struct error
 	char *data;
 } error_t;
 
-void append_text(void);
 static void on_editor_view_text_changed(GtkWidget *widget, GdkEventKey *event)
 {
 	//g_print("Invoked %s\n", __func__);
@@ -180,7 +179,6 @@ static void on_editor_view_text_changed(GtkWidget *widget, GdkEventKey *event)
 	if (ret)
 	{
 		char *tokens_str = token_collection_to_str(&editor.tokens);
-		//g_print(tokens_str);
 		free(tokens_str);
 	}
 
@@ -191,36 +189,6 @@ static void on_editor_view_text_changed(GtkWidget *widget, GdkEventKey *event)
 	int errors_count = 0;
 
 	token_type_e awaited;
-/*
-	while (editor.tokens != NULL)
-	{
-		awaited = parse(&parser, *((token_t *)editor.tokens->data), &error);
-		if ((((token_t *)editor.tokens->data)->type == WHITESPACE))
-			goto next_token;
-		if (error)
-		{
-			errors_count++;
-			gtk_widget_show(GTK_WIDGET(editor.info_bar.bar));
-			int len = snprintf(NULL, 0, "Error in syntax analysis: awaited [%s]\n%s\n---\nTotal err count=%d", token_type_to_str(awaited), token_to_str(editor.tokens->data), errors_count) + 1;
-			char *token_err = malloc(len);
-			snprintf(token_err, len, "Error in syntax analysis: awaited [%s]\n%s\n---\nTotal err count=%d", token_type_to_str(awaited), token_to_str(editor.tokens->data), errors_count);
-			gtk_text_buffer_set_text(editor.debug_view.buffer, token_err, strlen(token_err));
-			gtk_label_set_text(GTK_LABEL(editor.info_bar.info_bar_label), "Parsing error occured!");
-		}
-		else
-		{
-			gtk_widget_hide(GTK_WIDGET(editor.info_bar.bar));
-			gtk_text_buffer_set_text(editor.debug_view.buffer, "", 0);
-		}
-next_token:
-		editor.tokens = editor.tokens->next;
-	}
-*/
-
-
-	//text = token_collection_to_str(&editor.tokens);
-	//
-
 	editor.tokens = editor.tokens_bak;
 
 	error_t errors[100];
@@ -229,9 +197,9 @@ next_token:
 	while (editor.tokens != NULL)
 	{
 		token_type_e aw = parse(&parser, *((token_t *)editor.tokens->data), &error);
-		if (!error)
+		if (!error || ((token_t *)editor.tokens->data)->type == WHITESPACE)
 			last_successfull_state = parser.state;
-		if (aw != ((token_t *)editor.tokens->data)->type && ((token_t *)editor.tokens->data)->type != WHITESPACE)
+		else
 		{
 			errors[err_count] =
 			(error_t){
@@ -244,23 +212,28 @@ next_token:
 			err_count++;
 			parser.state = last_successfull_state;
 		}
-		char err_desc[10000];
-		int err_len = 0;
-		printf ("\033c");
-		for (int i = 0; i < err_count; i++)
-		{
-			err_len = snprintf(NULL, 0, "awaited %s, actual='%s'", token_type_to_str(errors[i].awaited), errors[i].data);
-			snprintf(err_desc + strlen(err_desc), err_len, "awaited %s, actual='%s'", token_type_to_str(errors[i].awaited), errors[i].data);
-			err_desc[err_len + 2] = '\n';
-		}
-
-			//g_print("awaited %s, actual='%s'\n", token_type_to_str(errors[i].awaited), errors[i].data);
-		g_print("%s", err_desc);
 		editor.tokens = editor.tokens->next;
 	}
-	gtk_text_buffer_set_text(editor.debug_view.buffer, error == 1 ? "q\0" : "0\0", 1);
+	char *err_desc = malloc(100);
+	int err_len = 0;
+	int total_len = 0;
+	g_print("\033c");
+	char *reserve = editor.error_description;
+	for (int i = 0; i < 10000; i++)
+		editor.error_description[i] = ' ';
+	for (int i = 0; i < err_count; i++)
+	{
 
+		err_len = snprintf(NULL, 0, "awa=%s, act=%s, dat=%s, sta=%d, end=%d\n", token_type_to_str(errors[i].awaited), token_type_to_str(errors[i].actual), errors[i].data, errors[i].start, errors[i].end) + 1;
+		snprintf(err_desc, err_len, "awa=%s, act=%s, dat=%s, sta=%d, end=%d\n", token_type_to_str(errors[i].awaited), token_type_to_str(errors[i].actual), errors[i].data, errors[i].start, errors[i].end);
+		memcpy(editor.error_description, err_desc, err_len);
+		editor.error_description += err_len - 1;
+	}
+	editor.error_description = reserve;
+	gtk_text_buffer_set_text(editor.debug_view.buffer, editor.error_description, strlen(editor.error_description));
+		free(err_desc);
 }
+
 
 static void stub_cb(GtkWidget *widget, GdkEventKey *event)
 {
@@ -320,6 +293,7 @@ static void activate(GtkApplication *app, gpointer user_data)
 	editor.builder = gtk_builder_new();
 	gtk_builder_add_from_file(editor.builder, "resources/xml/main_window.ui", NULL);
 	editor.window = GET_GTK_OBJ("window");
+	editor.error_description = malloc(10000);
 	init_info_bar();
 	init_editor_view();
 	init_debug_view();

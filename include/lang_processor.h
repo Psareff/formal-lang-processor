@@ -27,6 +27,9 @@ typedef struct info_bar
 
 typedef struct code_editor
 {
+
+	char *error_description;
+
 	GtkBuilder *builder;
 	GObject *window,
 		*status;

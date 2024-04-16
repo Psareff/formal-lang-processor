@@ -20,7 +20,12 @@ typedef enum states
 	STATE_CLOSE_BRACE,
 	STATE_SEMICOLON,
 	STATE_INVALID,
-	STATE_INIT
+	STATE_INIT,
+/// ^^^^^^^^^^^^^^^^ Course work
+	STATE_OPERATIONAL_OPEN_PAREN,
+	STATE_OPERATIONAL_CLOSE_PAREN,
+	STATE_OPERATIONAL_IDENT
+
 } states_t;
 
 typedef struct parser
